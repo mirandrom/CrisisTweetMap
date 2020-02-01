@@ -1,0 +1,1 @@
+from tweet_classifier.predictors.predictor import *

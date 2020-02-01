@@ -64,7 +64,10 @@ class TweetScraper(object):
             self.twitter_scraper = twitter_scraper
 
         def on_status(self, tweet):
-            self.twitter_scraper.on_status_fn(self.twitter_scraper.parse_tweet(tweet))
+            tweet_object = self.twitter_scraper.parse_tweet(tweet)
+            self.twitter_scraper.on_status_fn(tweet_object)
+            if self.twitter_scraper.tweets_scraped % 100 == 0:
+                print(self.twitter_scraper.tweets_scraped, tweet_object["text"])
             self.twitter_scraper.tweets_scraped += 1
 
         def on_error(self, status_code):

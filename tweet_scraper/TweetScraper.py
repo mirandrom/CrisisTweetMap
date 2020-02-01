@@ -10,7 +10,6 @@ class TweetScraper(object):
     # adapted from https://github.com/smacawi/twitter-scraper
     def __init__(self, auth_dict: dict, db: str, table: str):
         self.api = self._load_api(auth_dict)
-        self.db_table = self._create_db(db, table)
         self.stream_listener = self._create_stream_listener()
         self.tweets_scraped = 0
 
@@ -52,11 +51,6 @@ class TweetScraper(object):
         auth.set_access_token(auth_dict['access_token'], auth_dict['access_token_secret'])
         return tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-    def _create_db(self, db, table):
-        # TODO: ensure no issues with existing db/table
-        db = dataset.connect(f"sqlite:///{db}.db")
-        return db.create_table(table, primary_id=False)
-
     def _create_stream_listener(self):
         """Creates stream listener object from nested class so that stream listener can access `_parse_tweet` method.
         """
@@ -68,10 +62,8 @@ class TweetScraper(object):
             self.twitter_scraper = twitter_scraper
 
         def on_status(self, tweet):
-            self.twitter_scraper.db_table.insert(self.twitter_scraper.parse_tweet(tweet))
-            if self.twitter_scraper.tweets_scraped % 100 == 0:
-                print(self.twitter_scraper.tweets_scraped, tweet.text)
             self.twitter_scraper.tweets_scraped += 1
+            yield self.twitter_scraper.parse_tweet(tweet)
 
         def on_error(self, status_code):
             # TODO: complete error handling

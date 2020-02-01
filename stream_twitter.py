@@ -3,6 +3,8 @@ from typing import Dict
 import plac
 import json
 import dataset
+import time
+from urllib3.exceptions import ProtocolError
 
 from tweet_scraper.TweetScraper import TweetScraper
 from tweet_classifier.predictors import TweetPredictor
@@ -39,9 +41,6 @@ def main(auth="_tweepy_auth.json",
         output_dict = predictor.predict_json(tweet_object)
         tweet_object["prediction"] = output_dict["prediction"]
         tweet_object["prediction_confidence"] = output_dict["prediction_confidence"]
-        print(tweet_object["text"])
-        print(tweet_object["prediction"])
-        print(tweet_object["prediction_confidence"])
 
     # instantiate twitter scraper
     ts = TweetScraper.from_json(auth, {"on_status_fn": on_status_fn})
@@ -57,9 +56,14 @@ def main(auth="_tweepy_auth.json",
                     map(float, filter_dict['locations']))
             elif k == 'filter_level':
                 filter_dict['filter_level'] = filter_dict['filter_level'][0]
-    for tweet in ts.stream_tweets(filter_dict):
-        print(tweet["text"])
-        table.insert(tweet)
+    while True:
+        # Prevent stream stalling due to on_status_fn being slower than stream
+        # TODO: use pubsub like redis instead of ignoring errors.
+        try:
+            ts.stream_tweets(filter_dict)
+        except (ProtocolError, AttributeError):
+            print(f"protocol error {time.time()}")
+            continue
 
 
 if __name__ == '__main__':

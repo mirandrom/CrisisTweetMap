@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-import dataset
+import pandas as pd
 
 from typing import Callable, Dict
 import tweepy
@@ -185,7 +185,7 @@ class TweetScraper(object):
             user_listed_count=tweet['user']['listed_count'],
             user_location=tweet['user']['location'],
             user_verified=tweet['user']['verified'],
-            user_created_at=tweet['user']['created_at'],
+            user_created_at=str(pd.to_datetime(tweet['user']['created_at'])),
             # reply information
             reply_to_tweet_id=reply_to_tweet_id,
             reply_to_user=reply_to_user,
@@ -202,7 +202,7 @@ class TweetScraper(object):
             qt_user=qt_user,
             qt_id=qt_id,
             # time/location information
-            created_at=tweet['created_at'],
+            created_at=str(pd.to_datetime(tweet['created_at'])),
             coordinates=str(tweet['coordinates']),
             place=str(tweet['place']),
             # network information
@@ -237,11 +237,11 @@ class TweetScraper(object):
         try:
             print(search_kwargs)
             for tweet in tweepy.Cursor(self.api.search, **search_kwargs).items():
-                parsed_tweet = self.parse_tweet(tweet)
-                self.db_table.insert(parsed_tweet)
-                tweet_count += 1
+                tweet_object = self.parse_tweet(tweet)
+                self.on_status_fn(tweet_object)
                 if tweet_count % 100 == 0:
-                    print(tweet_count, parsed_tweet["created_at"], parsed_tweet["text"])
+                    print(tweet_count, tweet_object["created_at"], tweet_object["text"])
+                tweet_count += 1
         except tweepy.TweepError as e:
             print("Tweepy error : " + str(e))
 

@@ -8,7 +8,7 @@ from tweepy import OAuthHandler
 
 class TweetScraper(object):
     # adapted from https://github.com/smacawi/twitter-scraper
-    def __init__(self, auth_dict: dict, db: str, table: str):
+    def __init__(self, auth_dict: dict):
         self.api = self._load_api(auth_dict)
         self.stream_listener = self._create_stream_listener()
         self.tweets_scraped = 0

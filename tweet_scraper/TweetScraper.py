@@ -25,7 +25,7 @@ class TweetScraper(object):
 
         Returns
         -------
-        TwitterScraper
+        TweetScraper
         """
         with Path(json_path).open() as j:
             auth_dict = json.load(j)
@@ -60,7 +60,7 @@ class TweetScraper(object):
     def _create_stream_listener(self):
         """Creates stream listener object from nested class so that stream listener can access `_parse_tweet` method.
         """
-        return TwitterScraper.StreamListener(self)
+        return TweetScraper.StreamListener(self)
 
     class StreamListener(tweepy.StreamListener):
         def __init__(self, twitter_scraper):

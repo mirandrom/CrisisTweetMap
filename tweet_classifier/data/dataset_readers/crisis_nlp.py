@@ -1,17 +1,13 @@
-from typing import Dict, Iterable, List
-
-from tweet_classifier.data.dataset_readers import DATA_DIR
+from typing import Dict, Iterable
 
 import logging
-from pathlib import Path
 import pandas as pd
 from overrides import overrides
 
-from allennlp.data.dataset_readers import SnliReader
 from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import LabelField, TextField, Field
 from allennlp.data import Instance
-from allennlp.data.token_indexers import TokenIndexer, SingleIdTokenIndexer, PretrainedBertIndexer
+from allennlp.data.token_indexers import TokenIndexer, SingleIdTokenIndexer
 from allennlp.data.tokenizers import Tokenizer, WordTokenizer
 
 logger = logging.getLogger(__name__)

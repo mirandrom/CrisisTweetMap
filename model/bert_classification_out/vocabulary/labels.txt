@@ -1,0 +1,8 @@
+affected_people
+other_useful_information
+disease_transmission
+disease_signs_or_symptoms
+prevention
+treatment
+not_related_or_irrelevant
+deaths_reports

@@ -1,0 +1,45 @@
+{
+    "dataset_reader": {
+        "type": "csv",
+        "lazy": false,
+        "token_indexers": {
+            "bert": {
+                "type": "bert-pretrained",
+                "pretrained_model": "bert-base-uncased"
+            }
+        },
+        "tokenizer": {
+            "type": "pretrained_transformer",
+            "do_lowercase": true,
+            "model_name": "bert-base-uncased"
+        }
+    },
+    "iterator": {
+        "type": "bucket",
+        "batch_size": 32,
+        "sorting_keys": [
+            [
+                "tokens",
+                "num_tokens"
+            ]
+        ]
+    },
+    "model": {
+        "type": "bert_for_classification",
+        "bert_model": "bert-base-uncased",
+        "dropout": 0.1
+    },
+    "train_data_path": "data/2014_Middle_East_Respiratory_Syndrome_en/2014_mers_cf_labels_train.csv",
+    "validation_data_path": "data/2014_Middle_East_Respiratory_Syndrome_en/2014_mers_cf_labels_test.csv",
+    "trainer": {
+        "cuda_device": 0,
+        "grad_norm": 1,
+        "num_epochs": 10,
+        "num_serialized_models_to_keep": 1,
+        "optimizer": {
+            "type": "bert_adam",
+            "lr": 2e-05
+        },
+        "validation_metric": "+accuracy"
+    }
+}

@@ -28,9 +28,9 @@ def main(auth="_tweepy_auth.json",
         for k in filter_dict.keys():
             if filter_dict[k] == [""]:
                 filter_dict[k] = None
-            if filter_dict['locations']:
+            elif k == 'locations':
                 filter_dict['locations'] = list(map(float, filter_dict['locations']))
-            if filter_dict['filter_level']:
+            elif k == 'filter_level':
                 filter_dict['filter_level'] = filter_dict['filter_level'][0]
     ts.stream_tweets(filter_dict)
 

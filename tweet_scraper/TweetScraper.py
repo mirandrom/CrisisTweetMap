@@ -2,15 +2,17 @@ from pathlib import Path
 import json
 import dataset
 
+from typing import Callable, Dict
 import tweepy
 from tweepy import OAuthHandler
 
 
 class TweetScraper(object):
     # adapted from https://github.com/smacawi/twitter-scraper
-    def __init__(self, auth_dict: dict):
+    def __init__(self, auth_dict: dict, on_status_fn: Callable[[Dict], Dict]):
         self.api = self._load_api(auth_dict)
         self.stream_listener = self._create_stream_listener()
+        self.on_status_fn = on_status_fn
         self.tweets_scraped = 0
 
     @classmethod
@@ -62,8 +64,8 @@ class TweetScraper(object):
             self.twitter_scraper = twitter_scraper
 
         def on_status(self, tweet):
+            self.twitter_scraper.on_status_fn(self.twitter_scraper.parse_tweet(tweet))
             self.twitter_scraper.tweets_scraped += 1
-            yield self.twitter_scraper.parse_tweet(tweet)
 
         def on_error(self, status_code):
             # TODO: complete error handling

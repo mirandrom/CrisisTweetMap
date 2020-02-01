@@ -50,9 +50,10 @@ class CsvDatasetReader(DatasetReader):
                 print(row)
 
     @overrides
-    def text_to_instance(self, text: str, label: str) -> Instance:
+    def text_to_instance(self, text: str, label: str = None) -> Instance:
         fields: Dict[str, Field] = {}
         tokens = self._tokenizer.tokenize(text)
         fields['tokens'] = TextField(tokens, self._token_indexers)
-        fields['label'] = LabelField(label)
+        if label:
+            fields['label'] = LabelField(label)
         return Instance(fields)

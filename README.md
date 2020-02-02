@@ -26,3 +26,8 @@ to `/tweet_classifier/saved_models/bert_classification/`
     `python app.py`
     
     
+# Shoutouts
+These following repositories made my life much easier with working examples of the different components I needed for this project.
+- [smacawi](https://github.com/smacawi/tweet-classifier) for tweet scraping / classification
+- [mordecai](https://github.com/openeventdata/mordecai/tree/master/mordecai) for elasticsearch gazetteer
+- [dash uber app](https://github.com/plotly/dash-sample-apps/tree/master/apps/dash-uber-rides-demo) for dash frontend

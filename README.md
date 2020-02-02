@@ -26,9 +26,3 @@ to `/tweet_classifier/saved_models/bert_classification/`
     `python app.py`
     
     
-# TODO
-- Better colors
-- Noise perturbation
-- Opacity = age
-- Num_tweets slider
-- Time range slider

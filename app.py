@@ -92,24 +92,7 @@ app.layout = html.Div(
                             className="logo", src=app.get_asset_url("dash-logo-new.png")
                         ),
                         html.H2("CRISIS TWEET MAP"),
-                        html.P(
-                            """Select different days using the date picker or by selecting 
-                            different time frames on the histogram."""
-                        ),
-                        html.Div(
-                            className="div-for-dropdown",
-                            children=[
-                                dcc.DatePickerSingle(
-                                    id="date-picker",
-                                    min_date_allowed=dt(2014, 4, 1),
-                                    max_date_allowed=dt(2014, 9, 30),
-                                    initial_visible_month=dt(2014, 4, 1),
-                                    date=dt(2014, 4, 1).date(),
-                                    display_format="MMMM D, YYYY",
-                                    style={"border": "0px solid black"},
-                                )
-                            ],
-                        ),
+                        html.P("Get tweets from the last x minutes:"),
                         # Change to side-by-side for mobile layout
                         html.Div(
                             className="row",
@@ -118,44 +101,37 @@ app.layout = html.Div(
                                     className="div-for-dropdown",
                                     children=[
                                         # Dropdown for locations on map
-                                        dcc.Dropdown(
-                                            id="location-dropdown",
-                                            options=[
-                                                {"label": i, "value": i}
-                                                for i in ["Wuhan", "Toronto"]
-                                            ],
-                                            placeholder="Select a location",
+                                        dcc.Slider(
+                                            id="minute-slider",
+                                            min=0,
+                                            max=240,
+                                            marks={i: str(i) for i in range(0, 240, 60)},
+                                            value=60,
                                         )
                                     ],
                                 ),
+                                html.P("Get tweets by category:"),
                                 html.Div(
                                     className="div-for-dropdown",
                                     children=[
                                         # Dropdown to select times
                                         dcc.Dropdown(
-                                            id="bar-selector",
+                                            id="label-selector",
                                             options=[
                                                 {
-                                                    "label": str(n) + ":00",
-                                                    "value": str(n),
+                                                    "label": l,
+                                                    "value": l,
                                                 }
-                                                for n in range(24)
+                                                for l in LABELS
                                             ],
                                             multi=True,
-                                            placeholder="Select certain hours",
+                                            value=LABELS,
                                         )
                                     ],
                                 ),
                             ],
                         ),
-                        html.P(id="total-rides"),
-                        html.P(id="total-rides-selection"),
-                        html.P(id="date-value"),
-                        dcc.Markdown(
-                            children=[
-                                "Source: [FiveThirtyEight](https://github.com/fivethirtyeight/uber-tlc-foil-response/tree/master/uber-trip-data)"
-                            ]
-                        ),
+                        dcc.Graph(id="histogram"),
                     ],
                 ),
                 # Column for app graphs and plots
@@ -165,16 +141,9 @@ app.layout = html.Div(
                         dcc.Graph(id="map-graph"),
                         dcc.Interval(
                             id='interval-component',
-                            interval=10 * 1000,  # in milliseconds
+                            interval=3 * 1000,  # in milliseconds
                             n_intervals=0,
                         ),
-                        html.Div(
-                            className="text-padding",
-                            children=[
-                                "Select any of the bars on the histogram to section data by time."
-                            ],
-                        ),
-                        dcc.Graph(id="histogram"),
                     ],
                 ),
             ],
@@ -183,26 +152,24 @@ app.layout = html.Div(
 )
 
 
-
-# Update the total number of rides Tag
-@app.callback(Output("total-rides", "children"), [Input("date-picker", "date")])
-def update_total_rides(datePicked):
-    return "Total Number of tweets: {:,d}".format(0)
-
 # Update Histogram Figure based on Month, Day and Times Chosen
 @app.callback(
     Output("histogram", "figure"),
-    [Input("date-picker", "date"),
-     Input("bar-selector", "value"),
-     Input("interval-component", "n_intervals"),
+    [
+        Input("minute-slider", "value"),
+        Input("label-selector", "value"),
+        Input("interval-component", "n_intervals"),
      ],
 )
-def update_histogram(datePicked, selection, n_intervals):
-    DF = get_data(DB, TABLE)
-    counts = DF.prediction.value_counts()
+def update_histogram(minutes, selection, n_intervals):
+    num_hours = minutes // 60
+    num_minutes = int(minutes % 60)
+    df = get_data(DB, TABLE, num_hours, num_minutes)
+    counts = df.prediction.value_counts()
     xVal = LABELS
-    yVal = [counts[l] if l in counts else 0 for l in xVal]
-    colorVal = [LABEL_COLORS[l] for l in xVal]
+    yVal = [counts[l] if l in counts and l in selection else 0 for l in xVal]
+    yVal2 = [counts[l] if l in counts and l not in selection else 0 for l in xVal]
+    colorVal = [LABEL_COLORS[l] for l in LABELS]
 
     layout = go.Layout(
         bargap=0.01,
@@ -220,38 +187,19 @@ def update_histogram(datePicked, selection, n_intervals):
             fixedrange=True,
         ),
         yaxis=dict(
-            showticklabels=False,
+            showticklabels=True,
             showgrid=False,
             fixedrange=True,
             rangemode="nonnegative",
             zeroline=True,
         ),
-        annotations=[
-            dict(
-                x=xi,
-                y=yi,
-                text=f"{xi}: {yi}",
-                xanchor="center",
-                yanchor="bottom",
-                showarrow=False,
-                font=dict(color="white"),
-            )
-            for xi, yi in zip(xVal, yVal)
-        ],
     )
 
     return go.Figure(
         data=[
             go.Bar(x=xVal, y=yVal, marker=dict(color=colorVal), hoverinfo="x"),
-            go.Scatter(
-                opacity=0,
-                x=xVal,
-                y= [y/2 for y in yVal],
-                hoverinfo="none",
-                mode="markers",
-                marker=dict(color="rgb(66, 134, 244, 0)", symbol="square", size=40),
-                visible=True,
-            ),
+            go.Bar(x=xVal, y=yVal2, marker=dict(color=colorVal, opacity=0.1), hoverinfo="x"),
+
         ],
         layout=layout,
     )
@@ -262,15 +210,16 @@ def update_histogram(datePicked, selection, n_intervals):
 @app.callback(
     Output("map-graph", "figure"),
     [
-        Input("date-picker", "date"),
-        Input("bar-selector", "value"),
-        Input("location-dropdown", "value"),
+        Input("minute-slider", "value"),
+        Input("label-selector", "value"),
         Input("interval-component", "n_intervals"),
     ],
     [State("map-graph", "relayoutData")],
 )
-def update_graph(datePicked, selectedData, selectedLocation, n_intervals, relayoutData):
-    df = get_data(DB, TABLE)
+def update_graph(minutes, selection, n_intervals, relayoutData):
+    num_hours = minutes // 60
+    num_minutes = int(minutes % 60)
+    df = get_data(DB, TABLE, num_hours, num_minutes)
     try:
         latInitial = (relayoutData['mapbox.center']['lat'])
         lonInitial = (relayoutData['mapbox.center']['lon'])
@@ -280,62 +229,31 @@ def update_graph(datePicked, selectedData, selectedLocation, n_intervals, relayo
         lonInitial = -73.991251
         zoom = 0
     bearing = 0
+    df = df.loc[df.prediction.isin(selection)]
     df = df.loc[df.geolocation != 'None']
     colors = [LABEL_COLORS[l] for l in df.prediction]
     coords = df.geolocation.apply(lambda x: json.loads(x.replace("'",'"'))["coordinates"])
+    lat = [x[0] + (np.random.random() - 0.5)/100 for x in coords]
+    lon = [x[1] + (np.random.random() - 0.5)/100 for x in coords]
+    num_tweets = len(coords) - 1
+    opacity = [i/num_tweets for i,_ in enumerate(coords)]
 
     return go.Figure(
         data=[
             # Data for all rides based on date and time
             go.Scattermapbox(
-                lat=[x[0] for x in coords],
-                lon=[x[1] for x in coords],
+                lat=lat,
+                lon=lon,
                 mode="markers",
                 hoverinfo="text",
                 text=df.text,
                 marker=dict(
                     showscale=True,
                     color=colors,
-                    opacity=0.5,
+                    opacity=opacity,
                     size=5,
-                    # colorscale=[
-                    #     [0, "#F4EC15"],
-                    #     [0.04167, "#DAF017"],
-                    #     [0.0833, "#BBEC19"],
-                    #     [0.125, "#9DE81B"],
-                    #     [0.1667, "#80E41D"],
-                    #     [0.2083, "#66E01F"],
-                    #     [0.25, "#4CDC20"],
-                    #     [0.292, "#34D822"],
-                    #     [0.333, "#24D249"],
-                    #     [0.375, "#25D042"],
-                    #     [0.4167, "#26CC58"],
-                    #     [0.4583, "#28C86D"],
-                    #     [0.50, "#29C481"],
-                    #     [0.54167, "#2AC093"],
-                    #     [0.5833, "#2BBCA4"],
-                    #     [1.0, "#613099"],
-                    # ],
-                    # colorbar=dict(
-                    #     title="Time of<br>Day",
-                    #     x=0.93,
-                    #     xpad=0,
-                    #     nticks=24,
-                    #     tickfont=dict(color="#d8d8d8"),
-                    #     titlefont=dict(color="#d8d8d8"),
-                    #     thicknessmode="pixels",
-                    # ),
                 ),
             ),
-            # Plot of important locations on the map
-            # Scattermapbox(
-            #     lat=[list_of_locations[i]["lat"] for i in list_of_locations],
-            #     lon=[list_of_locations[i]["lon"] for i in list_of_locations],
-            #     mode="markers",
-            #     hoverinfo="text",
-            #     text=[i for i in list_of_locations],
-            #     marker=dict(size=8, color="#ffa0a0"),
-            # ),
         ],
         layout=go.Layout(
             autosize=True,

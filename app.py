@@ -6,7 +6,7 @@ import sqlite3
 import json
 import numpy as np
 
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from plotly import graph_objs as go
 from plotly.graph_objs import *
 from datetime import datetime as dt
@@ -72,6 +72,8 @@ colorVal = [
 def to_color(val, max_val):
     i = int((len(colorVal) - 1)* val / max_val)
     return colorVal[i]
+
+LABEL_COLORS = {l: to_color(i, len(LABELS)-1) for i, l in enumerate(LABELS)}
 
 # Plotly mapbox public token
 mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNqdnBvNDMyaTAxYzkzeW5ubWdpZ2VjbmMifQ.TXcBE-xg9BFdV2ocecc_7g"
@@ -199,11 +201,8 @@ def update_histogram(datePicked, selection, n_intervals):
     DF = get_data(DB, TABLE)
     counts = DF.prediction.value_counts()
     xVal = LABELS
-    yVal = [counts[l] for l in xVal]
-    colorVal = [to_color(v, counts[0]) for v in yVal]
-    date_picked = dt.strptime(datePicked, "%Y-%m-%d")
-    monthPicked = date_picked.month - 4
-    dayPicked = date_picked.day - 1
+    yVal = [counts[l] if l in counts else 0 for l in xVal]
+    colorVal = [LABEL_COLORS[l] for l in xVal]
 
     layout = go.Layout(
         bargap=0.01,
@@ -268,14 +267,21 @@ def update_histogram(datePicked, selection, n_intervals):
         Input("location-dropdown", "value"),
         Input("interval-component", "n_intervals"),
     ],
+    [State("map-graph", "relayoutData")],
 )
-def update_graph(datePicked, selectedData, selectedLocation, n_intervals):
-    DF = get_data(DB, TABLE)
-    zoom = 0
-    latInitial = 40.7272
-    lonInitial = -73.991251
+def update_graph(datePicked, selectedData, selectedLocation, n_intervals, relayoutData):
+    df = get_data(DB, TABLE)
+    try:
+        latInitial = (relayoutData['mapbox.center']['lat'])
+        lonInitial = (relayoutData['mapbox.center']['lon'])
+        zoom = (relayoutData['mapbox.zoom'])
+    except:
+        latInitial = 40.7272
+        lonInitial = -73.991251
+        zoom = 0
     bearing = 0
-    df = DF.loc[DF.geolocation != 'None'].iloc[:100]
+    df = df.loc[df.geolocation != 'None']
+    colors = [LABEL_COLORS[l] for l in df.prediction]
     coords = df.geolocation.apply(lambda x: json.loads(x.replace("'",'"'))["coordinates"])
 
     return go.Figure(
@@ -286,10 +292,10 @@ def update_graph(datePicked, selectedData, selectedLocation, n_intervals):
                 lon=[x[1] for x in coords],
                 mode="markers",
                 hoverinfo="text",
-                text=[t[:100] for t in df.text],
+                text=df.text,
                 marker=dict(
                     showscale=True,
-                    # color=np.append(np.insert(listCoords.index.hour, 0, 0), 23),
+                    color=colors,
                     opacity=0.5,
                     size=5,
                     # colorscale=[
@@ -337,7 +343,7 @@ def update_graph(datePicked, selectedData, selectedLocation, n_intervals):
             showlegend=False,
             mapbox=dict(
                 accesstoken=mapbox_access_token,
-                # center=dict(lat=latInitial, lon=lonInitial),  # 40.7272  # -73.991251
+                center=dict(lat=latInitial, lon=lonInitial),  # 40.7272  # -73.991251
                 style="dark",
                 bearing=bearing,
                 zoom=zoom,
@@ -380,4 +386,4 @@ def update_graph(datePicked, selectedData, selectedLocation, n_intervals):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=9001, host='0.0.0.0')

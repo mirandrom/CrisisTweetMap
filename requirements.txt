@@ -2,3 +2,10 @@ allennlp==0.9.0
 pandas==1.0.0
 tweepy==3.8.0
 dataset==1.2.0
+dash==1.8.0
+elasticsearch==7.5.1
+elasticsearch-dsl==7.1.0
+geopy==1.20.0
+geotext==0.4.0
+Shapely==1.7.0
+plac==0.9.6

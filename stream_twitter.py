@@ -4,10 +4,13 @@ import plac
 import json
 import dataset
 import time
-from urllib3.exceptions import ProtocolError
 
-from tweet_scraper.TweetScraper import TweetScraper
+
+from urllib3.exceptions import ProtocolError
+from tweet_classifier.TweetScraper import TweetScraper
 from tweet_classifier.predictors import TweetPredictor
+from tweet_classifier.TweetGeolocator import TweetGeolocator
+
 
 @plac.annotations(
     auth=plac.Annotation("Path to .json containing twitter auth information: "
@@ -28,19 +31,26 @@ def main(auth="_tweepy_auth.json",
          filter="stream_filter.json",
          db="coronavirus",
          table="live_tweets"):
+
     # instantiate table
     db = dataset.connect(f"sqlite:///{db}.db")
     table = db.create_table(table, primary_id=False)
 
     # instantiate predictor
-    predictor = TweetPredictor.from_path("model/bert_classification_out/model.tar.gz", "tweet_predictor")
+    predictor = TweetPredictor.from_path("tweet_classifier/model/bert_classification_out/model.tar.gz", "tweet_predictor")
+
+    # instantiate geolocator
+    tgl = TweetGeolocator()
 
     # create on_status_fn
     def on_status_fn(tweet_object: Dict):
-        table.insert(tweet_object)
+        # TODO: geotagging with geotext+geopy
         output_dict = predictor.predict_json(tweet_object)
         tweet_object["prediction"] = output_dict["prediction"]
         tweet_object["prediction_confidence"] = output_dict["prediction_confidence"]
+        tweet_object["geolocation"] = tgl.get_geolocation(tweet_object)
+        table.insert(tweet_object)
+
 
     # instantiate twitter scraper
     ts = TweetScraper.from_json(auth, {"on_status_fn": on_status_fn})
@@ -61,8 +71,10 @@ def main(auth="_tweepy_auth.json",
         # TODO: use pubsub like redis instead of ignoring errors.
         try:
             ts.stream_tweets(filter_dict)
-        except (ProtocolError, AttributeError):
+        except ProtocolError as e:
             print(f"protocol error {time.time()}")
+            print(e)
+            time.sleep(5)
             continue
 
 

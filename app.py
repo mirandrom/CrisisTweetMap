@@ -1,0 +1,383 @@
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import pandas as pd
+import sqlite3
+import json
+import numpy as np
+
+from dash.dependencies import Input, Output
+from plotly import graph_objs as go
+from plotly.graph_objs import *
+from datetime import datetime as dt
+
+
+app = dash.Dash(
+    __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}]
+)
+server = app.server
+
+
+
+
+
+DB = "./coronavirus.db"
+TABLE = "live_tweets"
+
+def get_data(db : str, table: str, num_hours: int = 0, num_minutes: int = 30):
+    """Extracts tweets from the last num_hours:num_minutes
+    """
+    con = sqlite3.connect(db)
+    df_plot = pd.read_sql_query(f"SELECT * FROM {table} WHERE datetime(created_at) >= datetime('now', '-{num_hours} hours', '-{num_minutes} minutes')", con)
+    return df_plot
+
+LABELS = [
+    "affected_people",
+    "other_useful_information",
+    "disease_transmission",
+    "disease_signs_or_symptoms",
+    "prevention",
+    "treatment",
+    "not_related_or_irrelevant",
+    "deaths_reports"
+]
+
+colorVal = [
+    "#F4EC15",
+    "#DAF017",
+    "#BBEC19",
+    "#9DE81B",
+    "#80E41D",
+    "#66E01F",
+    "#4CDC20",
+    "#34D822",
+    "#24D249",
+    "#25D042",
+    "#26CC58",
+    "#28C86D",
+    "#29C481",
+    "#2AC093",
+    "#2BBCA4",
+    "#2BB5B8",
+    "#2C99B4",
+    "#2D7EB0",
+    "#2D65AC",
+    "#2E4EA4",
+    "#2E38A4",
+    "#3B2FA0",
+    "#4E2F9C",
+    "#603099",
+]
+
+def to_color(val, max_val):
+    i = int((len(colorVal) - 1)* val / max_val)
+    return colorVal[i]
+
+# Plotly mapbox public token
+mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNqdnBvNDMyaTAxYzkzeW5ubWdpZ2VjbmMifQ.TXcBE-xg9BFdV2ocecc_7g"
+
+# Layout of Dash App
+app.layout = html.Div(
+    children=[
+        html.Div(
+            className="row",
+            children=[
+                # Column for user controls
+                html.Div(
+                    className="four columns div-user-controls",
+                    children=[
+                        html.Img(
+                            className="logo", src=app.get_asset_url("dash-logo-new.png")
+                        ),
+                        html.H2("CRISIS TWEET MAP"),
+                        html.P(
+                            """Select different days using the date picker or by selecting 
+                            different time frames on the histogram."""
+                        ),
+                        html.Div(
+                            className="div-for-dropdown",
+                            children=[
+                                dcc.DatePickerSingle(
+                                    id="date-picker",
+                                    min_date_allowed=dt(2014, 4, 1),
+                                    max_date_allowed=dt(2014, 9, 30),
+                                    initial_visible_month=dt(2014, 4, 1),
+                                    date=dt(2014, 4, 1).date(),
+                                    display_format="MMMM D, YYYY",
+                                    style={"border": "0px solid black"},
+                                )
+                            ],
+                        ),
+                        # Change to side-by-side for mobile layout
+                        html.Div(
+                            className="row",
+                            children=[
+                                html.Div(
+                                    className="div-for-dropdown",
+                                    children=[
+                                        # Dropdown for locations on map
+                                        dcc.Dropdown(
+                                            id="location-dropdown",
+                                            options=[
+                                                {"label": i, "value": i}
+                                                for i in ["Wuhan", "Toronto"]
+                                            ],
+                                            placeholder="Select a location",
+                                        )
+                                    ],
+                                ),
+                                html.Div(
+                                    className="div-for-dropdown",
+                                    children=[
+                                        # Dropdown to select times
+                                        dcc.Dropdown(
+                                            id="bar-selector",
+                                            options=[
+                                                {
+                                                    "label": str(n) + ":00",
+                                                    "value": str(n),
+                                                }
+                                                for n in range(24)
+                                            ],
+                                            multi=True,
+                                            placeholder="Select certain hours",
+                                        )
+                                    ],
+                                ),
+                            ],
+                        ),
+                        html.P(id="total-rides"),
+                        html.P(id="total-rides-selection"),
+                        html.P(id="date-value"),
+                        dcc.Markdown(
+                            children=[
+                                "Source: [FiveThirtyEight](https://github.com/fivethirtyeight/uber-tlc-foil-response/tree/master/uber-trip-data)"
+                            ]
+                        ),
+                    ],
+                ),
+                # Column for app graphs and plots
+                html.Div(
+                    className="eight columns div-for-charts bg-grey",
+                    children=[
+                        dcc.Graph(id="map-graph"),
+                        dcc.Interval(
+                            id='interval-component',
+                            interval=10 * 1000,  # in milliseconds
+                            n_intervals=0,
+                        ),
+                        html.Div(
+                            className="text-padding",
+                            children=[
+                                "Select any of the bars on the histogram to section data by time."
+                            ],
+                        ),
+                        dcc.Graph(id="histogram"),
+                    ],
+                ),
+            ],
+        )
+    ]
+)
+
+
+
+# Update the total number of rides Tag
+@app.callback(Output("total-rides", "children"), [Input("date-picker", "date")])
+def update_total_rides(datePicked):
+    return "Total Number of tweets: {:,d}".format(0)
+
+# Update Histogram Figure based on Month, Day and Times Chosen
+@app.callback(
+    Output("histogram", "figure"),
+    [Input("date-picker", "date"),
+     Input("bar-selector", "value"),
+     Input("interval-component", "n_intervals"),
+     ],
+)
+def update_histogram(datePicked, selection, n_intervals):
+    DF = get_data(DB, TABLE)
+    counts = DF.prediction.value_counts()
+    xVal = LABELS
+    yVal = [counts[l] for l in xVal]
+    colorVal = [to_color(v, counts[0]) for v in yVal]
+    date_picked = dt.strptime(datePicked, "%Y-%m-%d")
+    monthPicked = date_picked.month - 4
+    dayPicked = date_picked.day - 1
+
+    layout = go.Layout(
+        bargap=0.01,
+        bargroupgap=0,
+        barmode="group",
+        margin=go.layout.Margin(l=10, r=0, t=0, b=50),
+        showlegend=False,
+        plot_bgcolor="#323130",
+        paper_bgcolor="#323130",
+        dragmode="select",
+        font=dict(color="white"),
+        xaxis=dict(
+            showgrid=False,
+            nticks=8,
+            fixedrange=True,
+        ),
+        yaxis=dict(
+            showticklabels=False,
+            showgrid=False,
+            fixedrange=True,
+            rangemode="nonnegative",
+            zeroline=True,
+        ),
+        annotations=[
+            dict(
+                x=xi,
+                y=yi,
+                text=f"{xi}: {yi}",
+                xanchor="center",
+                yanchor="bottom",
+                showarrow=False,
+                font=dict(color="white"),
+            )
+            for xi, yi in zip(xVal, yVal)
+        ],
+    )
+
+    return go.Figure(
+        data=[
+            go.Bar(x=xVal, y=yVal, marker=dict(color=colorVal), hoverinfo="x"),
+            go.Scatter(
+                opacity=0,
+                x=xVal,
+                y= [y/2 for y in yVal],
+                hoverinfo="none",
+                mode="markers",
+                marker=dict(color="rgb(66, 134, 244, 0)", symbol="square", size=40),
+                visible=True,
+            ),
+        ],
+        layout=layout,
+    )
+
+
+
+# Update Map Graph based on date-picker, selected data on histogram and location dropdown
+@app.callback(
+    Output("map-graph", "figure"),
+    [
+        Input("date-picker", "date"),
+        Input("bar-selector", "value"),
+        Input("location-dropdown", "value"),
+        Input("interval-component", "n_intervals"),
+    ],
+)
+def update_graph(datePicked, selectedData, selectedLocation, n_intervals):
+    DF = get_data(DB, TABLE)
+    zoom = 0
+    latInitial = 40.7272
+    lonInitial = -73.991251
+    bearing = 0
+    df = DF.loc[DF.geolocation != 'None'].iloc[:100]
+    coords = df.geolocation.apply(lambda x: json.loads(x.replace("'",'"'))["coordinates"])
+
+    return go.Figure(
+        data=[
+            # Data for all rides based on date and time
+            go.Scattermapbox(
+                lat=[x[0] for x in coords],
+                lon=[x[1] for x in coords],
+                mode="markers",
+                hoverinfo="text",
+                text=[t[:100] for t in df.text],
+                marker=dict(
+                    showscale=True,
+                    # color=np.append(np.insert(listCoords.index.hour, 0, 0), 23),
+                    opacity=0.5,
+                    size=5,
+                    # colorscale=[
+                    #     [0, "#F4EC15"],
+                    #     [0.04167, "#DAF017"],
+                    #     [0.0833, "#BBEC19"],
+                    #     [0.125, "#9DE81B"],
+                    #     [0.1667, "#80E41D"],
+                    #     [0.2083, "#66E01F"],
+                    #     [0.25, "#4CDC20"],
+                    #     [0.292, "#34D822"],
+                    #     [0.333, "#24D249"],
+                    #     [0.375, "#25D042"],
+                    #     [0.4167, "#26CC58"],
+                    #     [0.4583, "#28C86D"],
+                    #     [0.50, "#29C481"],
+                    #     [0.54167, "#2AC093"],
+                    #     [0.5833, "#2BBCA4"],
+                    #     [1.0, "#613099"],
+                    # ],
+                    # colorbar=dict(
+                    #     title="Time of<br>Day",
+                    #     x=0.93,
+                    #     xpad=0,
+                    #     nticks=24,
+                    #     tickfont=dict(color="#d8d8d8"),
+                    #     titlefont=dict(color="#d8d8d8"),
+                    #     thicknessmode="pixels",
+                    # ),
+                ),
+            ),
+            # Plot of important locations on the map
+            # Scattermapbox(
+            #     lat=[list_of_locations[i]["lat"] for i in list_of_locations],
+            #     lon=[list_of_locations[i]["lon"] for i in list_of_locations],
+            #     mode="markers",
+            #     hoverinfo="text",
+            #     text=[i for i in list_of_locations],
+            #     marker=dict(size=8, color="#ffa0a0"),
+            # ),
+        ],
+        layout=go.Layout(
+            autosize=True,
+            margin=go.layout.Margin(l=0, r=35, t=0, b=0),
+            showlegend=False,
+            mapbox=dict(
+                accesstoken=mapbox_access_token,
+                # center=dict(lat=latInitial, lon=lonInitial),  # 40.7272  # -73.991251
+                style="dark",
+                bearing=bearing,
+                zoom=zoom,
+            ),
+            updatemenus=[
+                dict(
+                    buttons=(
+                        [
+                            dict(
+                                args=[
+                                    {
+                                        "mapbox.zoom": 12,
+                                        "mapbox.center.lon": "-73.991251",
+                                        "mapbox.center.lat": "40.7272",
+                                        "mapbox.bearing": 0,
+                                        "mapbox.style": "dark",
+                                    }
+                                ],
+                                label="Reset Zoom",
+                                method="relayout",
+                            )
+                        ]
+                    ),
+                    direction="left",
+                    pad={"r": 0, "t": 0, "b": 0, "l": 0},
+                    showactive=False,
+                    type="buttons",
+                    x=0.45,
+                    y=0.02,
+                    xanchor="left",
+                    yanchor="bottom",
+                    bgcolor="#323130",
+                    borderwidth=1,
+                    bordercolor="#6d6d6d",
+                    font=dict(color="#FFFFFF"),
+                )
+            ],
+        ),
+    )
+
+
+if __name__ == "__main__":
+    app.run_server(debug=True)

@@ -1,5 +1,6 @@
 # CrisisTweetMap
-Using Natural Language Processing to categorize and map tweets in real-time during crises.
+Using Natural Language Processing to categorize and map tweets in real-time during crises.  
+
 ![Crisis Tweet Map](https://raw.githubusercontent.com/amr-amr/CrisisTweetMap/master/crisis_tweet_map_demo.webm) 
 
 # To run the app

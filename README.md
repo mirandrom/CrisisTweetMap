@@ -3,6 +3,18 @@ Using Natural Language Processing to categorize and map tweets in real-time duri
 
 ![Crisis Tweet Map](https://raw.githubusercontent.com/amr-amr/CrisisTweetMap/master/doc/output.gif) 
 
+Tweets are classified among the following categories:
+```
+affected_people
+other_useful_information
+disease_transmission
+disease_signs_or_symptoms
+prevention
+treatment
+not_related_or_irrelevant
+deaths_reports
+```
+
 # To run the app
 1. Download [Trained AllenNLP Model](https://drive.google.com/file/d/1NVJknCSK_Gk6-1xORJ35TgOMIsOBdEtS/view?usp=sharing)
 to `/tweet_classifier/saved_models/bert_classification/`

@@ -1,5 +1,5 @@
 # CrisisTweetMap
-Using Natural Language Processing to categorize and map tweets in real-time during crises.  
+[Using Natural Language Processing to categorize and map tweets in real-time during crises.](https://devpost.com/software/crisistweetmap-txahf2)  
 
 ![Crisis Tweet Map](https://raw.githubusercontent.com/amr-amr/CrisisTweetMap/master/doc/output.gif) 
 

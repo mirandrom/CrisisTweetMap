@@ -10,19 +10,22 @@ from dash.dependencies import Input, Output, State
 from plotly import graph_objs as go
 from plotly.graph_objs import *
 from datetime import datetime as dt
-
+import dash_auth
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}]
 )
 server = app.server
 
-
-
-
-
 DB = "./coronavirus.db"
 TABLE = "live_tweets"
+
+with open("dashboard_usr_pw_pairs.json", "r") as f:
+    VALID_USERNAME_PASSWORD_PAIRS = json.load(f)
+auth = dash_auth.BasicAuth(
+    app,
+    VALID_USERNAME_PASSWORD_PAIRS
+)
 
 def get_data(db : str, table: str, num_hours: int = 0, num_minutes: int = 30):
     """Extracts tweets from the last num_hours:num_minutes

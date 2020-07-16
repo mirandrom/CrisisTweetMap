@@ -27,7 +27,7 @@ from tweet_classifier.TweetGeolocator import TweetGeolocator
         "Name of table in database where tweets will be stored. ",
         kind="option", type=str)
 )
-def main(auth="_tweepy_auth.json",
+def main(auth="tweepy_auth.json",
          filter="stream_filter.json",
          db="coronavirus",
          table="live_tweets"):

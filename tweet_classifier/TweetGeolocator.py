@@ -126,4 +126,4 @@ class TweetGeolocator:
                         f"Error while parsing geolocation from user location: {e}")
                     pass
 
-            return locations
+        return locations

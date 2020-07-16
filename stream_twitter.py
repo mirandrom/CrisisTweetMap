@@ -48,7 +48,9 @@ def main(auth="tweepy_auth.json",
         output_dict = predictor.predict_json(tweet_object)
         tweet_object["prediction"] = output_dict["prediction"]
         tweet_object["prediction_confidence"] = output_dict["prediction_confidence"]
-        tweet_object["geolocation"] = tgl.get_geolocation(tweet_object)
+        coordinates = tgl.get_geolocation(tweet_object)
+        for k, v in coordinates.items():
+            tweet_object[f"{k}_coordinates"] = json.dumps(v)
         table.insert(tweet_object)
 
 

@@ -42,6 +42,15 @@ LABELS = [
     "deaths_reports"
 ]
 
+COORDS = [
+    "tweet",
+    "place",
+    "content_cities",
+    "user_cities",
+    "content_countries",
+    "user_countries"
+]
+
 colorVal = [
     "#F4EC15",
     "#DAF017",
@@ -114,7 +123,7 @@ app.layout = html.Div(
                                 html.Div(
                                     className="div-for-dropdown",
                                     children=[
-                                        # Dropdown to select times
+                                        # Dropdown to select labels
                                         dcc.Dropdown(
                                             id="label-selector",
                                             options=[
@@ -126,6 +135,19 @@ app.layout = html.Div(
                                             ],
                                             multi=True,
                                             value=LABELS,
+                                        ),
+                                        # Dropdown to select coordinates
+                                        dcc.Dropdown(
+                                            id="coords-selector",
+                                            options=[
+                                                {
+                                                    "label": c,
+                                                    "value": c,
+                                                }
+                                                for c in COORDS
+                                            ],
+                                            multi=True,
+                                            value=COORDS[:4],
                                         )
                                     ],
                                 ),
@@ -212,11 +234,12 @@ def update_histogram(minutes, selection, n_intervals):
     [
         Input("minute-slider", "value"),
         Input("label-selector", "value"),
+        Input("coords-selector", "value"),
         Input("interval-component", "n_intervals"),
     ],
     [State("map-graph", "relayoutData")],
 )
-def update_graph(minutes, selection, n_intervals, relayoutData):
+def update_graph(minutes, selection, coordinates, n_intervals, relayoutData):
     num_hours = minutes // 60
     num_minutes = int(minutes % 60)
     df = get_data(DB, TABLE, num_hours, num_minutes)
@@ -230,31 +253,36 @@ def update_graph(minutes, selection, n_intervals, relayoutData):
         zoom = 0
     bearing = 0
     df = df.loc[df.prediction.isin(selection)]
-    df = df.loc[df.geolocation != 'None']
-    colors = [LABEL_COLORS[l] for l in df.prediction]
-    coords = df.geolocation.apply(lambda x: json.loads(x.replace("'",'"'))["coordinates"])
-    lat = [x[0] + (np.random.random() - 0.5)/100 for x in coords]
-    lon = [x[1] + (np.random.random() - 0.5)/100 for x in coords]
-    num_tweets = len(coords) - 1
-    opacity = [i/num_tweets for i,_ in enumerate(coords)]
-
-    return go.Figure(
-        data=[
-            # Data for all rides based on date and time
+    df["colors"] = [LABEL_COLORS[l] for l in df.prediction]
+    df["opacity"] = [i / len(df) for i in range(1, len(df)+1)]
+    data = []
+    for c in coordinates:
+        col = f"{c}_coordinates"
+        df[col] = df[col].apply(lambda x: json.loads(x))
+        df_c = df.loc[(df[col].astype(bool))]
+        df_c = df_c.explode(col)
+        coords = df_c[col]
+        # introduce small amount of noise to distinguish overlapping coordinates
+        lat = [x[0] + (np.random.random() - 0.5)/100 for x in coords]
+        lon = [x[1] + (np.random.random() - 0.5)/100 for x in coords]
+        data += [
             go.Scattermapbox(
                 lat=lat,
                 lon=lon,
                 mode="markers",
                 hoverinfo="text",
-                text=df.text,
+                text=df_c.text,
                 marker=dict(
                     showscale=True,
-                    color=colors,
-                    opacity=opacity,
+                    color=df_c.colors,
+                    opacity=df_c.opacity,
                     size=5,
                 ),
-            ),
-        ],
+            )
+        ]
+
+    return go.Figure(
+        data=data,
         layout=go.Layout(
             autosize=True,
             margin=go.layout.Margin(l=0, r=35, t=0, b=0),

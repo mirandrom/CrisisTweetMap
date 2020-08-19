@@ -1,8 +1,9 @@
-from typing import Dict, Iterable
+from typing import Dict, Iterable, List, Optional
 
 import logging
 import pandas as pd
 from overrides import overrides
+from pathlib import Path
 
 from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import LabelField, TextField, Field
@@ -29,18 +30,31 @@ class CsvDatasetReader(DatasetReader):
                  tokenizer: Tokenizer = None,
                  lazy: bool = False,
                  label_col: str = 'choose_one_category',
-                 text_col: str = 'tweet_text') -> None:
+                 text_col: str = 'tweet_text',
+                 data_dir: str = "./",
+                 exclude: Optional[List[str]] = None,
+                 ) -> None:
         super().__init__(lazy=lazy)
         self.label_col = label_col
         self.text_col = text_col
         self._tokenizer = tokenizer or WordTokenizer()
         self._token_indexers = token_indexers or {'tokens': SingleIdTokenIndexer()}
+        self.data_dir = Path(data_dir)
+        self.exclude = exclude or []
 
     @overrides
-    def _read(self, file_path: str) -> Iterable[Instance]:
+    def _read(self, file_path_glob: str) -> Iterable[Instance]:
         """Hacky method of reading from multiple files for test/train
         """
-        df = pd.read_csv(file_path, encoding = "ISO-8859-1")
+        file_paths = list(self.data_dir.glob(file_path_glob))
+        dfs = []
+        for fp in file_paths:
+            if any([e in str(fp) for e in self.exclude]):
+                continue
+            df = pd.read_csv(fp, encoding="ISO-8859-1", skipinitialspace=True)
+            dfs += [df]
+
+        df = pd.concat(dfs)
         for i,row in df.iterrows():
             try:
                 yield self.text_to_instance(row[self.text_col], row[self.label_col])

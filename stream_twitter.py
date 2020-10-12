@@ -37,7 +37,7 @@ def main(auth="tweepy_auth.json",
     table = db.create_table(table, primary_id=False)
 
     # instantiate predictor
-    predictor = TweetPredictor.from_path("tweet_classifier/saved_models/bert_classification/model.tar.gz", "tweet_predictor")
+    predictor = TweetPredictor.from_path("experiments/l2_balanced/model.tar.gz", "tweet_predictor")
 
     # instantiate geolocator
     tgl = TweetGeolocator()

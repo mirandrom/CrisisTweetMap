@@ -1,0 +1,48 @@
+{
+    "dataset_reader": {
+        "type": "classification-csv",
+        "balance": true,
+        "data_dir": "data/CrisisNLP_labeled_data_crowdflower/",
+        "exclude": [
+            "_es_",
+            "ebola"
+        ],
+        "label_col": "choose_one_category",
+        "max_tokens": 512,
+        "text_col": "tweet_text",
+        "token_indexers": {
+            "bert": {
+                "type": "pretrained_transformer",
+                "model_name": "bert-base-cased"
+            }
+        },
+        "tokenizer": {
+            "type": "pretrained_transformer",
+            "model_name": "bert-base-cased"
+        }
+    },
+    "model": {
+        "type": "simple_attention_classifier",
+        "classifier": "l2",
+        "embedder": "bert-base-cased",
+        "encoder": {
+            "type": "bert_pooler",
+            "pretrained_model": "bert-base-cased",
+            "requires_grad": true
+        }
+    },
+    "train_data_path": "2014_Pakistan_floods/*_train.csv",
+    "validation_data_path": "2014_Pakistan_floods/*_test.csv",
+    "trainer": {
+        "cuda_device": 0,
+        "num_epochs": 20,
+        "optimizer": {
+            "type": "huggingface_adamw",
+            "lr": 1e-05
+        }
+    },
+    "data_loader": {
+        "batch_size": 16,
+        "shuffle": true
+    }
+}

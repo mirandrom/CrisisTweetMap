@@ -39,6 +39,8 @@ to `/tweet_classifier/experiments/l2_balanced/`
 6. Run live dashboard  
     `python app.py`
     
+# To train model
+`allennlp train experiments/l2_balanced/config.json --serialization-dir  experiments/l2_balanced/out`
     
 # Shoutouts
 These following repositories made my life much easier with working examples of the different components I needed for this project.

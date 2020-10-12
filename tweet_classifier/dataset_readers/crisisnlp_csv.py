@@ -9,7 +9,7 @@ from allennlp.data.token_indexers import TokenIndexer, SingleIdTokenIndexer
 from allennlp.data.tokenizers import Token, Tokenizer, WhitespaceTokenizer
 
 
-@DatasetReader.register('crisisnlp-csv')
+@DatasetReader.register('classification-csv')
 class ClassificationCsvReader(DatasetReader):
     def __init__(self,
                  tokenizer: Tokenizer = None,

@@ -3,7 +3,7 @@ from typing import Dict
 import torch
 from torch import nn
 from torch.nn import functional as F
-from tweet_clustering import L2Linear, CosLinear
+from tweet_classifier import L2Linear, CosLinear
 
 from allennlp.data import Vocabulary
 from allennlp.models import Model

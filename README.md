@@ -1,6 +1,7 @@
-# CrisisTweetMap
-Winner of McHacks 7 Hackathon: [Using Natural Language Processing to categorize and map tweets in real-time during the covid-19 crisis.](https://devpost.com/software/crisistweetmap-txahf2)  
-EMNLP 2020 Covid-19 Workshop Paper: [Real-time Classification, Geolocation and Interactive Visualization of COVID-19 Information Shared on Social Media to Better Understand Global Developments](https://openreview.net/forum?id=CyeMZ_gutEn)
+# CrisisTweetMap 
+EMNLP 2020 Covid-19 Workshop Paper: [Real-time Classification, Geolocation and Interactive Visualization of COVID-19 Information Shared on Social Media to Better Understand Global Developments](https://www.aclweb.org/anthology/2020.nlpcovid19-2.37/) ([OpenReview](https://openreview.net/forum?id=CyeMZ_gutEn)).
+
+Winner of McHacks 7 Hackathon: [Using Natural Language Processing to categorize and map tweets in real-time during the covid-19 crisis.](https://devpost.com/software/crisistweetmap-txahf2) 
 
 ![Crisis Tweet Map](https://raw.githubusercontent.com/amr-amr/CrisisTweetMap/master/doc/output.gif) 
 
